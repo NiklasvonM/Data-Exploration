@@ -7,7 +7,7 @@ shinyUI(
           sidebarMenu(
             menuItem("Dashboard", tabName = "dashboard"),
             #menuItem("Report", tabName = "report"),
-            menuItem("Weekday", tabName = "wochentag", icon = icon("calendar-alt")),
+            menuItem("Data", tabName = "data"),
             menuItem("Correlation matrix", tabName = "correlation_matrix"),
             menuItem("Dependent variable by column value", tabName = "dv_distribution_by_column_value"),
             menuItem("Dependencies", tabName = "dependencies"),
@@ -15,29 +15,33 @@ shinyUI(
             width = "400px"
           ),
           selectInput(
-              inputId = "sel_column1",
-              label = "Column 1",
-              choices = COLUMNS,
-              multiple = FALSE,
-              selectize = FALSE,
-              size = min(length(COLUMNS), 5)
+            inputId = "sel_file",
+            label = "File",
+            choices = list.files(path = "data/", recursive = TRUE)
           ),
           selectInput(
-            inputId = "sel_column2",
-            label = "Column 2",
-            choices = COLUMNS,
-            multiple = FALSE,
-            selectize = FALSE,
-            size = min(length(COLUMNS), 5)
+              inputId = "sel_column1",
+              label = "Column 1",
+              choices = NULL,
+              multiple = FALSE,
+              selectize = FALSE,
+              size = 5
           ),
+          # selectInput(
+          #   inputId = "sel_column2",
+          #   label = "Column 2",
+          #   choices = COLUMNS,
+          #   multiple = FALSE,
+          #   selectize = FALSE,
+          #   size = 5
+          # ),
           selectInput(
             inputId = "sel_dv",
             label = "Dependent variable",
-            selected = DV,
-            choices = COLUMNS,
+            selected = NULL,
+            choices = NULL,
             multiple = FALSE,
-            selectize = FALSE,
-            size = min(length(COLUMNS), 5)
+            selectize = TRUE
           )
         ),
         dashboardBody(
@@ -45,6 +49,11 @@ shinyUI(
                 tabItem(tabName = "dashboard",
                     fluidPage(
                     )
+                ),
+                tabItem(tabName = "data",
+                    fluidPage(
+                      DT::dataTableOutput("data")
+                    )   
                 ),
                 # Apparently not working together with observe()
                 # tabItem(tabName = "report",
@@ -74,7 +83,7 @@ shinyUI(
                         width = 3,
                         dragZone(
                           id = "dragzone_key",
-                          choices = COLUMNS
+                          choices = NULL
                         )
                       ),
                       column(
@@ -84,15 +93,7 @@ shinyUI(
                             width = 3,
                             dropZoneInput(
                               inputId = "dropzone_key",
-                              choices = COLUMNS
-                            )
-                          ),
-                          column(
-                            width = 3,
-                            selectInput(
-                              inputId = "sel_file_key",
-                              label = NULL,
-                              choices = list.files(path = "data/", recursive = TRUE)
+                              choices = NULL
                             )
                           )
                         ),

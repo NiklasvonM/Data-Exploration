@@ -15,16 +15,12 @@ library(scico) # scale_color_scico
 library(ggdark)
 library(DataExplorer)
 library(dndselectr) # dropZoneInput(), dragZone()
+library(DT) # renderDataTable()
 
 source("config.R")
 
 
-DATA <- fread(paste0("data/", fileName), encoding = "UTF-8")
 
-
-COLUMNS <- names(DATA)
-#COLUMNS <- sort(COLUMNS)
-N <- nrow(DATA)
 
 
 # set in config.R
@@ -49,16 +45,6 @@ if(generateReport) {
 
 
 
-# correlation of activities with each other
-MAT_COR <- matrix(data = NA_real_, nrow = length(COLUMNS), ncol = length(COLUMNS))
-colnames(MAT_COR) <- COLUMNS
-rownames(MAT_COR) <- COLUMNS
-for (i in COLUMNS) {
-  for (j in COLUMNS) {
-    if(is.numeric(DATA[[i]]) & is.numeric(DATA[[j]]))
-      MAT_COR[i, j] <- round(cor(DATA[[i]], DATA[[j]]), 2)
-  }
-}
 
 
 

@@ -1,5 +1,33 @@
 
 shinyServer <- function(input, output, session) {
+  
+  
+  DATA <- reactive({
+    fread(paste0("data/", input$sel_file), encoding = "UTF-8")
+  })
+  COLUMNS <- reactive({
+    names(DATA())
+  })
+  N <- reactive({
+    nrow(DATA())
+  })
+  
+  # correlation of activities with each other
+  MAT_COR <- reactive({
+    columns <- COLUMNS()
+    data <- DATA()
+    MAT_COR <- matrix(data = NA_real_, nrow = length(columns), ncol = length(columns))
+    colnames(MAT_COR) <- columns
+    rownames(MAT_COR) <- columns
+    for (i in columns) {
+      for (j in columns) {
+        if(is.numeric(data[[i]]) & is.numeric(data[[j]]))
+          MAT_COR[i, j] <- round(cor(data[[i]], data[[j]]), 2)
+      }
+    }
+    test <<- MAT_COR
+    MAT_COR
+  })
 
     # observe({
     #   create_report(
@@ -19,11 +47,18 @@ shinyServer <- function(input, output, session) {
     # })
   
   
-  shiny::observe({
-    print("Observing key file...")
-    choices <- copy(names(fread(paste0("data/", input$sel_file_key), nrows = 2)))#names(rdtKeys())
-    updateDropZoneInput(session, inputId = "dropzone_key", presets = character(0), choices = choices)
-    updateDragZone(session, id = "dragzone_key", choices = choices)
+  
+  
+  shiny::observeEvent(input$sel_file, {
+    print("Observing file...")
+    columns <- COLUMNS()
+    
+    updateSelectInput(inputId = "sel_column1", choices = columns)
+    updateSelectInput(inputId = "sel_dv", choices = columns)
+    
+    updateDropZoneInput(session, inputId = "dropzone_key", presets = character(0), choices = columns)
+    updateDragZone(session, id = "dragzone_key", choices = columns)
+    
   })
   
   rdtKeys <- reactive({
@@ -34,13 +69,17 @@ shinyServer <- function(input, output, session) {
 
   
   
+  output$data <- DT::renderDataTable({
+      DATA()
+  })
+  
     
     
   output$correlation_matrix <- renderRHandsontable({#renderDataTable({
-      # tbl <- rhandsontable(MAT_COR)
+      # tbl <- rhandsontable(MAT_COR())
       # tbl <- hot_cols(tbl, fixedColumnsLeft = 0)
       # tbl <- hot_rows(tbl, fixedRowsTop = 0)
-      tbl <- rhandsontable(MAT_COR)
+      tbl <- rhandsontable(MAT_COR())
       tbl <- hot_cols(tbl,
           renderer = "
          function (instance, td, row, col, prop, value, cellProperties) {
@@ -55,12 +94,14 @@ shinyServer <- function(input, output, session) {
   })
   
   output$correlation_matrix_plot <- renderPlotly({
+    matCor <- MAT_COR()
+    columns <- COLUMNS()
     dtPlot <- data.table(
-      Column1 = rownames(MAT_COR)[row(MAT_COR)],
-      Column2 = colnames(MAT_COR)[col(MAT_COR)],
-      KorrelationPlot = c(MAT_COR)
+      Column1 = rownames(matCor)[row(matCor)],
+      Column2 = colnames(matCor)[col(matCor)],
+      KorrelationPlot = c(matCor)
     )
-    for(col in COLUMNS) {
+    for(col in columns) {
       maxCor <- max(abs(dtPlot[Column1 == col & Column1 != Column2]$KorrelationPlot))
       dtPlot[Column1 == col, Shape := as.factor(as.integer(abs(KorrelationPlot) == maxCor))]
     }
@@ -89,19 +130,22 @@ shinyServer <- function(input, output, session) {
       theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
       xlab("Column 1") +
       ylab("Column 2") +
-      scale_size_continuous(limits = c(0, 1))
+      scale_size_continuous(limits = c(0, 1)) +
+      # Keep order
+      scale_x_discrete(limits = columns) +
+      scale_y_discrete(limits = columns)
     ggplotly(p, tooltip = "text")
   })
   
   
   output$dv_distribution_by_column_value <- renderPlotly({
     req(input$sel_column1 != input$sel_dv)
-    req(is.numeric(DATA[[input$sel_dv]]))
-    #req(length(unique(DATA[[input$sel_dv]])) < 30)
-    #req(length(unique(DATA[[input$sel_column1]])) < 30)
+    req(is.numeric(DATA()[[input$sel_dv]]))
+    #req(length(unique(DATA()[[input$sel_dv]])) < 30)
+    #req(length(unique(DATA()[[input$sel_column1]])) < 30)
     column <- input$sel_column1
     dv <- input$sel_dv
-    dtPlot <- DATA[, c(dv, column), with = FALSE]
+    dtPlot <- DATA()[, c(dv, column), with = FALSE]
     
     dtPlot <- dtPlot[, .(Mean = mean(get(dv), na.rm = TRUE), N = .N), by = c(column)]
     setnames(dtPlot, "Mean", dv)
@@ -142,13 +186,15 @@ shinyServer <- function(input, output, session) {
   
   # Check for dependencies i.e. if column A has the value x, then column B always has the value y.
   output$dependencies <- renderRHandsontable({
-    dtDependencies <- data.table(Column = COLUMNS, DependentColumns = "")
+    data <- DATA()
+    n <- N()
+    dtDependencies <- data.table(Column = COLUMNS(), DependentColumns = "")
     for(col in dtDependencies$Column) {
       dependentColumns <- NULL
-      for(val in unique(DATA[[col]])) {
-        dtCur <- DATA[get(col) == val]
+      for(val in unique(data[[col]])) {
+        dtCur <- data[get(col) == val]
         # Skip in case of too few or too many observations of this value
-        if(nrow(dtCur) < pmax(10, N / 20) | N - nrow(dtCur) < pmax(10, N / 20))
+        if(nrow(dtCur) < pmax(10, n / 20) | n - nrow(dtCur) < pmax(10, n / 20))
           next
         for(dependentColumn in dtDependencies$Column) {
           if(col == dependentColumn)

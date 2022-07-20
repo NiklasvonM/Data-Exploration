@@ -1,7 +1,7 @@
 
-fileName <- "train.csv"
+#fileName <- list.files("data")[1]
 
-DV <- "SalePrice"
+#DV <- "SalePrice"
 
 # Regenerate DataExplorer report when the Shiny app is launched?
 generateReport <- FALSE
