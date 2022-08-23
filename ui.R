@@ -12,12 +12,14 @@ shinyUI(
             menuItem("Dependent variable by column value", tabName = "dv_distribution_by_column_value"),
             menuItem("Dependencies", tabName = "dependencies"),
             menuItem("Check for Keys", tabName = "check_for_keys"),
+            menuItem("Model", tabName = "model"),
             width = "400px"
           ),
-          selectInput(
+          fileInput(
             inputId = "sel_file",
             label = "File",
-            choices = list.files(path = "data/", recursive = TRUE)
+            multiple = FALSE
+            #choices = list.files(path = "data/", recursive = TRUE)
           ),
           selectInput(
               inputId = "sel_column1",
@@ -101,6 +103,37 @@ shinyUI(
                           rHandsontableOutput(
                             outputId = "keys_table"
                           )
+                        )
+                      )
+                    )
+                ),
+                tabItem(tabName = "model",
+                    fluidPage(
+                      fluidRow(
+                        column(6,
+                          selectInput(
+                           inputId = "sel_model",
+                           label = "Model",
+                           choices = c("rf", "lm")
+                          )
+                        ),
+                        column(6,
+                          selectInput(
+                           inputId = "sel_attributes_mdl_influence",
+                           label = "Attributes",
+                           choices = NULL,
+                           multiple = TRUE
+                          )    
+                        )
+                      ),
+                      fluidRow(
+                        plotOutput(
+                          outputId = "plot_mdl_influence"
+                        )
+                      ),
+                      fluidRow(
+                        plotOutput(
+                          outputId = "plot_mdl_check"
                         )
                       )
                     )

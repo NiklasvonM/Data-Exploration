@@ -3,7 +3,12 @@ shinyServer <- function(input, output, session) {
   
   
   DATA <- reactive({
-    fread(paste0("data/", input$sel_file), encoding = "UTF-8")
+    req(input$sel_file)
+    #as.data.table(input$sel_file)
+    #fread(paste0("data/", input$sel_file), encoding = "UTF-8")
+    data <- fread(input$sel_file$datapath, encoding = "UTF-8")
+    names(data) <- make.names(names(data))
+    data
   })
   COLUMNS <- reactive({
     names(DATA())
@@ -25,7 +30,6 @@ shinyServer <- function(input, output, session) {
           MAT_COR[i, j] <- round(cor(data[[i]], data[[j]]), 2)
       }
     }
-    test <<- MAT_COR
     MAT_COR
   })
 
@@ -47,18 +51,24 @@ shinyServer <- function(input, output, session) {
     # })
   
   
-  
-  
   shiny::observeEvent(input$sel_file, {
     print("Observing file...")
     columns <- COLUMNS()
     
     updateSelectInput(inputId = "sel_column1", choices = columns)
     updateSelectInput(inputId = "sel_dv", choices = columns)
+    updateSelectInput(inputId = "sel_attributes_mdl_influence", choices = columns)
+    
     
     updateDropZoneInput(session, inputId = "dropzone_key", presets = character(0), choices = columns)
     updateDragZone(session, id = "dragzone_key", choices = columns)
     
+  })
+  
+  shiny::observeEvent(input$sel_dv, {
+    columns <- COLUMNS()
+    
+    updateSelectInput(inputId = "sel_attributes_mdl_influence", choices = setdiff(columns, input$sel_dv))
   })
   
   rdtKeys <- reactive({
@@ -243,6 +253,44 @@ shinyServer <- function(input, output, session) {
       dt
     ) %>%
       hot_cols(columnSorting = TRUE)
+  })
+  
+  
+  MODEL <- reactive({
+    req(input$sel_model)
+    req(input$sel_dv)
+    
+    mdl <- train(input$sel_model, DATA(), input$sel_dv)
+    mdl
+  })
+  
+  IML_MODEL_EFFECT <- reactive({
+    req(input$sel_attributes_mdl_influence)
+    
+    allNumeric <- TRUE
+    for(attribute in input$sel_attributes_mdl_influence) {
+      if(!is.numeric(DATA()[[attribute]])) {
+        allNumeric <- FALSE
+      }
+    }
+    req(allNumeric)
+    
+    X <- DATA()[, -input$sel_dv, with = FALSE]
+    
+    model <- Predictor$new(MODEL(), data = X, y = DATA()[[input$sel_dv]])
+    effect <- FeatureEffects$new(model)
+    effect
+  })
+  
+  output$plot_mdl_influence <- renderPlot({
+    
+    IML_MODEL_EFFECT()$plot(features = input$sel_attributes_mdl_influence)
+  })
+  
+  output$plot_mdl_check <- renderPlot({
+    req(isTRUE(input$sel_model == "lm"))
+    
+    performance::check_model(MODEL())
   })
     
     
