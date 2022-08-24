@@ -52,7 +52,7 @@ shinyServer <- function(input, output, session) {
   
   
   shiny::observeEvent(input$sel_file, {
-    print("Observing file...")
+    #print("Observing file...")
     columns <- COLUMNS()
     
     updateSelectInput(inputId = "sel_column1", choices = columns)
@@ -71,11 +71,12 @@ shinyServer <- function(input, output, session) {
     updateSelectInput(inputId = "sel_attributes_mdl_influence", choices = setdiff(columns, input$sel_dv))
   })
   
-  rdtKeys <- reactive({
-    req(input$sel_file_key)
-    print("Getting reactive file...")
-    fread(paste0("data/", input$sel_file_key))
-  })
+  ## Not needed any more
+  # rdtKeys <- reactive({
+  #   req(input$sel_file_key)
+  #   print("Getting reactive file...")
+  #   fread(paste0("data/", input$sel_file_key))
+  # })
 
   
   
@@ -247,13 +248,55 @@ shinyServer <- function(input, output, session) {
   output$keys_table <- renderRHandsontable({
     req(input$dropzone_key)
     potentialKey <- input$dropzone_key
-    dt <- rdtKeys()
+    dt <- DATA()#rdtKeys()
     dt <- dt[, .(N = .N), by = c(potentialKey)][N > 1]
     rhandsontable(
       dt
     ) %>%
       hot_cols(columnSorting = TRUE)
   })
+  
+  # taken from library(DataExplorer)
+  data_introduction <- reactive({
+    data <- DATA()
+    split_data <- DataExplorer::split_columns(data)
+    output <- data.table(rows = nrow(data), columns = ncol(data), 
+                         discrete_columns = split_data[["num_discrete"]], continuous_columns = split_data[["num_continuous"]], 
+                         all_missing_columns = split_data[["num_all_missing"]], 
+                         total_missing_values = sum(is.na(data)), complete_rows = sum(complete.cases(data)), 
+                         total_observations = nrow(data) * ncol(data), memory_usage = as.numeric(object.size(data)))
+    output
+  })
+  
+  output$data_basic_statistics <- renderTable({
+    intro <- data_introduction()
+    memory_usage <- intro[["memory_usage"]]
+    class(memory_usage) <- "object_size"
+    intro_df <- data.frame(
+      "Name" = c("Rows", "Columns",
+                 "Discrete columns", "Continuous columns", "All missing columns",
+                 "Missing observations", "Complete Rows",
+                 "Total observations", "Memory allocation"),
+      "Value" = c(
+        format(intro[["rows"]], big.mark = ","),
+        format(intro[["columns"]], big.mark = ","),
+        format(intro[["discrete_columns"]], big.mark = ","),
+        format(intro[["continuous_columns"]], big.mark = ","),
+        format(intro[["all_missing_columns"]], big.mark = ","),
+        format(intro[["total_missing_values"]], big.mark = ","),
+        format(intro[["complete_rows"]], big.mark = ","),
+        format(intro[["total_observations"]], big.mark = ","),
+        format(memory_usage, unit = "auto")
+      )
+    )
+  }, hover = FALSE, bordered = TRUE, striped = TRUE)
+  
+  
+  output$data_missings <- renderPlot({
+    DataExplorer::plot_missing(DATA())
+  })
+  
+  
   
   
   MODEL <- reactive({

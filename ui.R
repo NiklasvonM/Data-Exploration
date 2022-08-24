@@ -50,6 +50,12 @@ shinyUI(
             tabItems(
                 tabItem(tabName = "dashboard",
                     fluidPage(
+                      fluidRow(
+                        tableOutput(outputId = "data_basic_statistics")
+                      ),
+                      fluidRow(
+                        plotOutput("data_missings", height = "600px")
+                      )
                     )
                 ),
                 tabItem(tabName = "data",
@@ -81,6 +87,8 @@ shinyUI(
                 ),
                 tabItem(tabName = "check_for_keys",
                     fluidPage(
+                      shiny::h2("Do the selected columns form a key, i.e. uniquely identify the other values?"),
+                      shiny::h3("Cases that are not uniquely identified:"),
                       column(
                         width = 3,
                         dragZone(
