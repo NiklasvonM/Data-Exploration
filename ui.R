@@ -55,6 +55,9 @@ shinyUI(
                       ),
                       fluidRow(
                         plotOutput("data_missings", height = "600px")
+                      ),
+                      fluidRow(
+                        plotOutput("data_histogram_plots", height = "1200px")
                       )
                     )
                 ),

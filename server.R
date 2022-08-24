@@ -82,7 +82,7 @@ shinyServer <- function(input, output, session) {
   
   output$data <- DT::renderDataTable({
       DATA()
-  })
+  }, options = list(pageLength = 20L, scrollX = TRUE))
   
     
     
@@ -294,6 +294,11 @@ shinyServer <- function(input, output, session) {
   
   output$data_missings <- renderPlot({
     DataExplorer::plot_missing(DATA())
+  })
+  
+  output$data_histogram_plots <- renderPlot({
+    dtTest <<- DATA()
+    DataExplorer::plot_histogram(DATA(), nrow = ceiling(data_introduction()$continuous_columns / 3), ncol = 3)
   })
   
   
